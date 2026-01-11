@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Weekly Pay Sheet - PC-LAPMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: white;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+        }
+
+        body {
+            background: #5a5a5a;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .sheet-container {
+            background: white;
+            max-width: 297mm;
+            /* Landscape A4 approx */
+            margin: 20px auto;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-box {
+            border-bottom: 2px solid #000;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+
+        table {
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #f0f0f0 !important;
+            border-bottom: 2px solid black !important;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        td {
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        /* Color Coding */
+        .col-gross {
+            background-color: #f8f9fa !important;
+        }
+
+        .col-rec {
+            background-color: #fff3cd !important;
+            color: #856404;
+        }
+
+        .col-adv {
+            background-color: #d1ecf1 !important;
+            color: #0c5460;
+        }
+
+        .col-net {
+            background-color: #d4edda !important;
+            font-weight: bold;
+            color: #155724;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="text-center no-print py-3">
+        <button onclick="window.print()" class="btn btn-warning fw-bold px-4">🖨️ Print Report</button>
+        <a href="/reports" class="btn btn-light ms-2">Back</a>
+    </div>
+
+    <div class="sheet-container">
+        <div class="header-box text-center">
+            <h2 class="fw-bold mb-0 text-uppercase">PC - LAPMS Pay Sheet</h2>
+            <h5 class="mt-2">Project: Civil Construction Site A</h5>
+            <div class="d-flex justify-content-between mt-3 px-5">
+                <strong>Week Of: <%= weekStart.toLocaleDateString() %></strong>
+                <strong>Generated: <%= new Date().toLocaleDateString() %></strong>
+            </div>
+        </div>
+
+        <table class="table table-bordered border-dark mb-0">
+            <thead>
+                <tr>
+                    <th width="5%">#</th>
+                    <th width="20%" class="text-left">Labour Name</th>
+                    <th width="10%">Daily Rates</th>
+                    <th width="10%">Days Worked</th>
+                    <th width="10%">Gross Wages</th>
+                    <th width="10%" class="bg-warning bg-opacity-25">Deduction (Rec)</th>
+                    <th width="10%" class="bg-info bg-opacity-25">New Advance</th>
+                    <th width="15%" class="bg-success bg-opacity-25">Net Payment</th>
+                    <th width="10%">Signature</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% reportData.forEach((row, index)=> { %>
+                    <tr>
+                        <td>
+                            <%= index + 1 %>
+                        </td>
+                        <td class="text-left fw-bold">
+                            <%= row.name %>
+                        </td>
+                        <td>
+                            <%= row.rate %>
+                        </td>
+                        <td>
+                            <%= row.days %>
+                        </td>
+                        <td class="col-gross">
+                            <%= row.gross %>
+                        </td>
+                        <td class="col-rec">
+                            <%= row.recovered %>
+                        </td>
+                        <td class="col-adv">
+                            <%= row.newAdvance %>
+                        </td>
+                        <td class="col-net">
+                            <%= row.net %>
+                        </td>
+                        <td></td>
+                    </tr>
+                    <% }) %>
+            </tbody>
+            <tfoot class="table-group-divider" style="border-top: 3px solid black;">
+                <tr class="fw-bold fs-6">
+                    <td colspan="4" class="text-end text-uppercase">Grand Total</td>
+                    <td>
+                        <%= siteTotal.gross %>
+                    </td>
+                    <td class="text-warning text-dark">
+                        <%= siteTotal.recovered %>
+                    </td>
+                    <td class="text-info text-dark">
+                        <%= siteTotal.newAdvance %>
+                    </td>
+                    <td class="text-success text-dark">
+                        <%= siteTotal.net %>
+                    </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="row mt-5 pt-5">
+            <div class="col-4 text-center border-top border-dark pt-2 mx-3">
+                <p>Site Supervisor</p>
+            </div>
+            <div class="col-4 offset-3 text-center border-top border-dark pt-2 mx-3">
+                <p>Authorized Signatory</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

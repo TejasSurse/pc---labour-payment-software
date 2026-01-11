@@ -1,0 +1,264 @@
+<%- include('../partials/header', { path: '/attendance' }) %>
+
+    <% const endDate=new Date(weekStart); endDate.setDate(endDate.getDate() + 6); const weekDisplay=`${new
+        Date(weekStart).toLocaleDateString()} — ${endDate.toLocaleDateString()}`; const weekCost=labours.reduce((sum,
+        labour)=> {
+        const att = attendanceMap[labour._id.toString()];
+        if(att) {
+        const days = Object.values(att.days).reduce((a,b) => a+b, 0);
+        return sum + (days * labour.dailyRate);
+        }
+        return sum;
+        }, 0);
+        %>
+
+        <div class="container-fluid">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                <h3>Attendance & Advance Manager</h3>
+                <form action="/attendance" method="GET" class="d-flex align-items-center gap-2">
+                    <label class="fw-bold">Go To:</label>
+                    <input type="date" name="date" class="form-control" value="<%= weekStartStr %>"
+                        onchange="this.form.submit()">
+                </form>
+            </div>
+
+            <div class="card bg-light border-0 mb-4">
+                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1 text-primary"><i class="bi bi-calendar3 me-2"></i>
+                            <%= weekDisplay %>
+                        </h5>
+                        <small class="text-muted">Monday to Sunday</small>
+                    </div>
+                    <div class="mt-3 mt-md-0">
+                        <span class="fs-5">Est. Payout: <strong>₹<%= weekCost %></strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Save Form -->
+            <form action="/attendance" method="POST" id="attendanceForm">
+                <input type="hidden" name="weekStart" value="<%= weekStartStr %>">
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 70vh;">
+                            <table class="table table-bordered align-middle mb-0 text-center"
+                                style="min-width: 1200px;">
+                                <thead class="bg-dark text-white sticky-top" style="top: 0; z-index: 1020;">
+                                    <tr>
+                                        <th class="text-start ps-3"
+                                            style="min-width: 180px; position: sticky; left: 0; background: #212529; z-index: 1030;">
+                                            Labour</th>
+                                        <th>Mon</th>
+                                        <th>Tue</th>
+                                        <th>Wed</th>
+                                        <th>Thu</th>
+                                        <th>Fri</th>
+                                        <th>Sat</th>
+                                        <th>Sun</th>
+                                        <th style="width: 50px;">Days</th>
+                                        <th>Rate</th>
+                                        <th>Gross</th>
+                                        <th class="bg-warning text-dark">Open Bal</th>
+                                        <th class="bg-secondary text-white">+ New Adv</th>
+                                        <th class="bg-danger text-white">- Rec</th>
+                                        <th>Net Pay</th>
+                                        <th style="min-width: 120px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% labours.forEach(labour=> {
+                                        const att = attendanceMap[labour._id.toString()] || { days: {}, newAdvance: 0,
+                                        recoveredAmount: 0, isPaid: false };
+                                        const isLocked = att.isPaid;
+                                        const options = [0, 0.5, 1, 1.5, 2];
+                                        const currentBalance = labour.advanceBalance || 0;
+
+                                        // Calculate display values
+                                        const totalDays = Object.values(att.days || {}).reduce((a,b) => a +
+                                        (parseFloat(b) || 0), 0);
+                                        const gross = totalDays * labour.dailyRate;
+                                        const net = gross - (att.recoveredAmount || 0);
+                                        %>
+                                        <tr data-rate="<%= labour.dailyRate %>"
+                                            class="<%= isLocked ? 'table-success' : '' %>">
+                                            <td class="text-start ps-3 fw-bold"
+                                                style="position: sticky; left: 0; background: inherit; z-index: 1010;">
+                                                <%= labour.name %>
+                                                    <% if(isLocked) { %> <i class="bi bi-lock-fill text-success ms-1"
+                                                            title="Paid"></i>
+                                                        <% } %>
+                                            </td>
+
+                                            <!-- Day Dropdowns -->
+                                            <% ['mon','tue','wed','thu','fri','sat','sun'].forEach(day=> {
+                                                const val = att.days[day] || 0;
+                                                %>
+                                                <td class="p-1">
+                                                    <select name="attendance[<%= labour._id %>][<%= day %>]"
+                                                        class="form-select form-select-sm text-center p-0 day-input"
+                                                        data-day="<%= day %>" style="min-width: 55px;" <%=isLocked
+                                                        ? 'disabled' : '' %>>
+                                                        <% options.forEach(opt=> { %>
+                                                            <option value="<%= opt %>" <%=val===opt ? 'selected' : '' %>
+                                                                ><%= opt===0 ? '-' : opt %>
+                                                            </option>
+                                                            <% }) %>
+                                                    </select>
+                                                </td>
+                                                <% }) %>
+
+                                                    <td class="fw-bold total-days bg-white">
+                                                        <%= totalDays %>
+                                                    </td>
+                                                    <td class="text-muted"><small>₹<%= labour.dailyRate %></small></td>
+                                                    <td class="gross-amt text-secondary">₹<%= gross %>
+                                                    </td>
+
+                                                    <!-- Advance Columns -->
+                                                    <td class="fw-bold text-dark bg-warning bg-opacity-10">₹<%=
+                                                            currentBalance %>
+                                                    </td>
+
+                                                    <td class="p-1" style="background: rgba(108, 117, 125, 0.1);">
+                                                        <input type="number"
+                                                            name="attendance[<%= labour._id %>][newAdvance]"
+                                                            class="form-control form-control-sm text-center new-adv"
+                                                            value="<%= att.newAdvance || 0 %>" placeholder="0" min="0"
+                                                            <%=isLocked ? 'disabled' : '' %>>
+                                                    </td>
+
+                                                    <td class="p-1" style="background: rgba(220, 53, 69, 0.1);">
+                                                        <input type="number"
+                                                            name="attendance[<%= labour._id %>][recoveredAmount]"
+                                                            class="form-control form-control-sm text-center rec-amt"
+                                                            value="<%= att.recoveredAmount || 0 %>" placeholder="0"
+                                                            min="0" <%=isLocked ? 'disabled' : '' %>>
+                                                    </td>
+
+                                                    <td class="fw-bold text-success net-amt fs-6">₹<%= net %>
+                                                    </td>
+                                                    <td>
+                                                        <% if(!isLocked) { %>
+                                                            <!-- PAY Button - triggers external form via JS -->
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-success px-3 pay-btn"
+                                                                data-labour-id="<%= labour._id %>"
+                                                                data-week="<%= weekStartStr %>">PAY</button>
+                                                            <% } else { %>
+                                                                <span class="badge bg-success fs-6">PAID</span>
+                                                                <% } %>
+                                                    </td>
+                                        </tr>
+                                        <% }) %>
+                                            <% if(labours.length===0) { %>
+                                                <tr>
+                                                    <td colspan="16" class="p-5 text-muted">No active labours found. Add
+                                                        some from Master.</td>
+                                                </tr>
+                                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <% if(labours.length> 0) { %>
+                        <div class="card-footer bg-white p-3 text-end sticky-bottom"
+                            style="bottom: 0px; z-index: 1040; border-top: 2px solid #eee;">
+                            <button type="submit" class="btn btn-primary btn-lg shadow"><i class="bi bi-save me-2"></i>
+                                Save All Changes</button>
+                        </div>
+                        <% } %>
+                </div>
+            </form>
+
+            <!-- Hidden PAY Form (OUTSIDE main form) -->
+            <form id="payForm" action="/attendance/simple-pay" method="POST" style="display: none;">
+                <input type="hidden" name="weekStart" id="payWeekStart">
+                <input type="hidden" name="labourId" id="payLabourId">
+            </form>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // Real-time calculation
+                function updateRow(row) {
+                    if (!row.dataset.rate) return;
+                    const rate = parseFloat(row.dataset.rate);
+
+                    let totalDays = 0;
+                    row.querySelectorAll('.day-input').forEach(sel => totalDays += parseFloat(sel.value) || 0);
+
+                    const recAmt = parseFloat(row.querySelector('.rec-amt')?.value) || 0;
+                    const gross = totalDays * rate;
+                    const net = gross - recAmt;
+
+                    const totalCell = row.querySelector('.total-days');
+                    const grossCell = row.querySelector('.gross-amt');
+                    const netCell = row.querySelector('.net-amt');
+
+                    if (totalCell) totalCell.textContent = totalDays;
+                    if (grossCell) grossCell.textContent = '₹' + gross;
+                    if (netCell) netCell.textContent = '₹' + net;
+                }
+
+                document.querySelectorAll('tbody tr').forEach(updateRow);
+
+                document.addEventListener('change', function (e) {
+                    if (e.target.classList.contains('day-input') || e.target.classList.contains('new-adv') || e.target.classList.contains('rec-amt')) {
+                        updateRow(e.target.closest('tr'));
+                    }
+                });
+
+                document.addEventListener('input', function (e) {
+                    if (e.target.classList.contains('new-adv') || e.target.classList.contains('rec-amt')) {
+                        updateRow(e.target.closest('tr'));
+                    }
+                });
+
+                // PAY Button Handler
+                console.log('Setting up PAY button handlers...');
+                const payBtns = document.querySelectorAll('.pay-btn');
+                console.log('Found', payBtns.length, 'PAY buttons');
+
+                payBtns.forEach((btn, index) => {
+                    console.log('PAY Button', index, 'data:', btn.dataset.labourId, btn.dataset.week);
+                    btn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        console.log('=== PAY BUTTON CLICKED ===');
+                        const labourId = this.dataset.labourId;
+                        const week = this.dataset.week;
+                        console.log('Labour ID:', labourId);
+                        console.log('Week:', week);
+
+                        if (confirm('Mark as PAID? Click OK to proceed.')) {
+                            console.log('User confirmed. Submitting form...');
+
+                            const form = document.getElementById('payForm');
+                            const weekInput = document.getElementById('payWeekStart');
+                            const labourInput = document.getElementById('payLabourId');
+
+                            console.log('Form element:', form);
+                            console.log('Week input:', weekInput);
+                            console.log('Labour input:', labourInput);
+
+                            if (form && weekInput && labourInput) {
+                                weekInput.value = week;
+                                labourInput.value = labourId;
+                                console.log('Form values set. Submitting...');
+                                form.submit();
+                            } else {
+                                console.error('ERROR: Form elements not found!');
+                                alert('Error: Form not found. Please refresh the page.');
+                            }
+                        } else {
+                            console.log('User cancelled.');
+                        }
+                    });
+                });
+            });
+        </script>
+
+        <%- include('../partials/footer') %>

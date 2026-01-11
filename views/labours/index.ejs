@@ -1,0 +1,74 @@
+<%- include('../partials/header', { path: '/labours' }) %>
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>Labour Master</h3>
+            <a href="/labours/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add New Labour</a>
+        </div>
+
+        <!-- Search -->
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-body">
+                <form action="/labours" method="GET" class="d-flex gap-2">
+                    <input type="text" name="search" class="form-control" placeholder="Search by name or phone..."
+                        value="<%= search %>">
+                    <button type="submit" class="btn btn-outline-secondary">Search</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- List -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Name</th>
+                                <th>Phone</th>
+                                <th>Daily Rate</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% labours.forEach(labour=> { %>
+                                <tr>
+                                    <td class="ps-4 fw-bold"><a href="/labours/<%= labour._id %>"
+                                            class="text-decoration-none">
+                                            <%= labour.name %>
+                                        </a></td>
+                                    <td>
+                                        <%= labour.phone %>
+                                    </td>
+                                    <td>₹<%= labour.dailyRate %>
+                                    </td>
+                                    <td>
+                                        <% if(labour.isActive) { %>
+                                            <span class="badge bg-success">Active</span>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary">Inactive</span>
+                                                <% } %>
+                                    </td>
+                                    <td>
+                                        <a href="/labours/<%= labour._id %>/edit" class="btn btn-sm btn-outline-dark"><i
+                                                class="bi bi-pencil"></i></a>
+                                        <form action="/labours/<%= labour._id %>?_method=DELETE" method="POST"
+                                            class="d-inline" onsubmit="return confirm('Are you sure?')">
+                                            <button class="btn btn-sm btn-outline-danger"><i
+                                                    class="bi bi-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+                <% if(labours.length===0) { %>
+                    <div class="text-center p-4 text-muted">No labours found.</div>
+                    <% } %>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../partials/footer') %>

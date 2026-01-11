@@ -1,0 +1,99 @@
+<%- include('../partials/header', { path: '/labours' }) %>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Profile Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center pt-5 pb-5">
+                        <div class="mb-3">
+                            <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center"
+                                style="width: 100px; height: 100px;">
+                                <span class="fs-1 fw-bold text-primary">
+                                    <%= labour.name.charAt(0) %>
+                                </span>
+                            </div>
+                        </div>
+                        <h4>
+                            <%= labour.name %>
+                        </h4>
+                        <p class="text-muted">
+                            <%= labour.phone %>
+                        </p>
+                        <div class="badge bg-primary fs-6 mb-3">Rate: ₹<%= labour.dailyRate %>/day</div>
+                        <hr>
+                        <div class="row text-start mt-4">
+                            <div class="col-6 mb-3">
+                                <small class="text-muted d-block">Total Earned</small>
+                                <span class="fw-bold">₹<%= totalEarned %></span>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <small class="text-muted d-block">Total Paid</small>
+                                <span class="fw-bold">₹<%= totalPaid %></span>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <small class="text-muted d-block">Pending</small>
+                                <span class="fw-bold text-danger">₹<%= pendingAmount %></span>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <small class="text-muted d-block">Status</small>
+                                <span class="<%= labour.isActive ? 'text-success' : 'text-secondary' %>">
+                                    <%= labour.isActive ? 'Active' : 'Inactive' %>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History -->
+            <div class="col-md-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Payment History</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Week</th>
+                                        <th>Gross</th>
+                                        <th>Advance</th>
+                                        <th>Net Paid</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% payments.forEach(p=> { %>
+                                        <tr>
+                                            <td>
+                                                <%= new Date(p.weekStart).toLocaleDateString() %>
+                                            </td>
+                                            <td>₹<%= p.grossAmount %>
+                                            </td>
+                                            <td>₹<%= p.advance %>
+                                            </td>
+                                            <td class="fw-bold text-success">₹<%= p.netPaid %>
+                                            </td>
+                                            <td>
+                                                <%= new Date(p.paidDate).toLocaleDateString() %>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                                            <% if(payments.length===0) { %>
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted">No payment history
+                                                        yet.</td>
+                                                </tr>
+                                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../partials/footer') %>

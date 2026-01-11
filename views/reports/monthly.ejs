@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Monthly Summary - PC-LAPMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: white;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+        }
+
+        body {
+            background: #5a5a5a;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .sheet-container {
+            background: white;
+            max-width: 297mm;
+            margin: 20px auto;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-box {
+            border-bottom: 2px solid #000;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+
+        table {
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #f0f0f0 !important;
+            border-bottom: 2px solid black !important;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        td {
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="text-center no-print py-3">
+        <button onclick="window.print()" class="btn btn-warning fw-bold px-4">🖨️ Print Report</button>
+        <a href="/reports" class="btn btn-light ms-2">Back</a>
+    </div>
+
+    <div class="sheet-container">
+        <div class="header-box text-center">
+            <h2 class="fw-bold mb-0 text-uppercase">PC - LAPMS Monthly Summary</h2>
+            <h5 class="mt-2">Report Month: <%= monthStr %>
+            </h5>
+        </div>
+
+        <table class="table table-bordered border-dark mb-0">
+            <thead>
+                <tr>
+                    <th width="5%">#</th>
+                    <th width="25%" class="text-left">Labour Name</th>
+                    <th width="15%">Total Days</th>
+                    <th width="15%">Total Gross</th>
+                    <th width="10%">Total Recovered</th>
+                    <th width="10%">Total New Adv</th>
+                    <th width="20%">Net Payment</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% reportData.forEach((row, index)=> { %>
+                    <tr>
+                        <td>
+                            <%= index + 1 %>
+                        </td>
+                        <td class="text-left fw-bold">
+                            <%= row.name %>
+                        </td>
+                        <td>
+                            <%= row.totalDays %>
+                        </td>
+                        <td>
+                            <%= row.totalGross %>
+                        </td>
+                        <td class="text-warning text-dark">
+                            <%= row.totalRecovered %>
+                        </td>
+                        <td class="text-info text-dark">
+                            <%= row.totalNewAdvance %>
+                        </td>
+                        <td class="fw-bold text-success">
+                            <%= row.totalNet %>
+                        </td>
+                    </tr>
+                    <% }) %>
+            </tbody>
+            <tfoot class="table-group-divider" style="border-top: 3px solid black;">
+                <tr class="fw-bold fs-6">
+                    <td colspan="3" class="text-end text-uppercase">Month Total</td>
+                    <td>
+                        <%= siteTotal.gross %>
+                    </td>
+                    <td>
+                        <%= siteTotal.recovered %>
+                    </td>
+                    <td>
+                        <%= siteTotal.newAdvance %>
+                    </td>
+                    <td>
+                        <%= siteTotal.net %>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="row mt-5 pt-5">
+            <div class="col-4 text-center border-top border-dark pt-2 mx-3">
+                <p>Accountant</p>
+            </div>
+            <div class="col-4 offset-3 text-center border-top border-dark pt-2 mx-3">
+                <p>Project Manager</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

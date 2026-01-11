@@ -1,0 +1,224 @@
+<%- include('partials/header', { path: '/dashboard' }) %>
+
+    <style>
+        /* Gradient Cards */
+        .bg-gradient-primary {
+            background: linear-gradient(45deg, #4e73df, #224abe);
+            color: white;
+        }
+
+        .bg-gradient-success {
+            background: linear-gradient(45deg, #1cc88a, #13855c);
+            color: white;
+        }
+
+        .bg-gradient-warning {
+            background: linear-gradient(45deg, #f6c23e, #dda20a);
+            color: white;
+        }
+
+        .bg-gradient-info {
+            background: linear-gradient(45deg, #36b9cc, #258391);
+            color: white;
+        }
+
+        .card-stat {
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .card-stat .card-body {
+            position: relative;
+            z-index: 2;
+        }
+
+        .card-stat .icon-bg {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 4rem;
+            opacity: 0.15;
+            transform: rotate(15deg);
+            z-index: 1;
+        }
+    </style>
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="text-gray-800 fw-bold">Dashboard</h3>
+            <span class="text-muted"><i class="bi bi-calendar-event me-2"></i>Week: <%= weekStart.toLocaleDateString()
+                    %></span>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <!-- Total Labours -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-stat bg-gradient-primary h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs fw-bold text-uppercase mb-1" style="opacity: 0.8;">Total Workforce
+                                </div>
+                                <div class="h3 mb-0 fw-bold">
+                                    <%= labourCount %>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-people-fill fa-2x"></i>
+                            </div>
+                        </div>
+                        <i class="bi bi-people-fill icon-bg"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Payout -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-stat bg-gradient-success h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs fw-bold text-uppercase mb-1" style="opacity: 0.8;">Week Payout</div>
+                                <div class="h3 mb-0 fw-bold">₹<%= totalPayout %>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-currency-rupee fa-2x"></i>
+                            </div>
+                        </div>
+                        <i class="bi bi-cash-stack icon-bg"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advances -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-stat bg-gradient-warning h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs fw-bold text-uppercase mb-1" style="opacity: 0.8;">New Advances
+                                    Given</div>
+                                <div class="h3 mb-0 fw-bold">₹<%= totalAdvances %>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-wallet2 fa-2x"></i>
+                            </div>
+                        </div>
+                        <i class="bi bi-wallet-fill icon-bg"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Status -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-stat bg-gradient-info h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs fw-bold text-uppercase mb-1" style="opacity: 0.8;">Status
+                                    (Paid/Unpaid)</div>
+                                <div class="h3 mb-0 fw-bold">
+                                    <%= paidCount %> / <%= unpaidCount %>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-check-circle-fill fa-2x"></i>
+                            </div>
+                        </div>
+                        <i class="bi bi-list-check icon-bg"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Row -->
+        <div class="row">
+            <!-- Advance List -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow border-0 mb-4 h-100">
+                    <div
+                        class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white border-bottom-0">
+                        <h6 class="m-0 fw-bold text-primary"><i class="bi bi-exclamation-circle me-2"></i>Outstanding
+                            Advances (Top 5)</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light text-muted small text-uppercase">
+                                    <tr>
+                                        <th class="ps-4">Labour Name</th>
+                                        <th>Phone</th>
+                                        <th>Balance</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% advancesList.forEach(labour=> { %>
+                                        <tr>
+                                            <td class="ps-4 fw-bold text-dark">
+                                                <%= labour.name %>
+                                            </td>
+                                            <td>
+                                                <%= labour.phone %>
+                                            </td>
+                                            <td class="text-danger fw-bold">₹<%= labour.advanceBalance %>
+                                            </td>
+                                            <td>
+                                                <a href="/labours/<%= labour._id %>"
+                                                    class="btn btn-sm btn-outline-primary rounded-pill px-3">View</a>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                                            <% if(advancesList.length===0) { %>
+                                                <tr>
+                                                    <td colspan="4" class="text-center p-4 text-muted">No outstanding
+                                                        advances.</td>
+                                                </tr>
+                                                <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <% if(advancesList.length> 0) { %>
+                        <div class="card-footer bg-white border-0 text-center">
+                            <a href="/labours" class="text-decoration-none small fw-bold">View All Labours <i
+                                    class="bi bi-arrow-right"></i></a>
+                        </div>
+                        <% } %>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow border-0 h-100">
+                    <div class="card-header py-3 bg-white border-bottom-0">
+                        <h6 class="m-0 fw-bold text-primary"><i class="bi bi-lightning-charge me-2"></i>Quick Setup</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-3">
+                            <a href="/attendance"
+                                class="btn btn-lg btn-primary p-3 shadow-sm d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-calendar-check fs-4 me-3"></i> Weekly Attendance & Pay</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="/labours/new"
+                                class="btn btn-lg btn-success p-3 shadow-sm d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-person-plus fs-4 me-3"></i> Register New Labour</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="/reports"
+                                class="btn btn-lg btn-secondary p-3 shadow-sm d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-printer fs-4 me-3"></i> Print Pay Sheets</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
