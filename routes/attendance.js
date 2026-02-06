@@ -75,6 +75,21 @@ router.post('/', async (req, res) => {
                 continue; // Skip paid records
             }
 
+            // Get new input values
+            const newAdvanceInput = parseFloat(data.newAdvance) || 0;
+            const newRecoveryInput = parseFloat(data.recoveredAmount) || 0;
+
+            // Get existing cumulative values
+            const oldCumulativeAdvance = existing ? (existing.cumulativeAdvance || 0) : 0;
+            const oldCumulativeRecovery = existing ? (existing.cumulativeRecovery || 0) : 0;
+
+            // ADD new values to cumulative (this is the accumulation!)
+            const newCumulativeAdvance = oldCumulativeAdvance + newAdvanceInput;
+            const newCumulativeRecovery = oldCumulativeRecovery + newRecoveryInput;
+
+            console.log(`Labour ${labourId}: Advance ${oldCumulativeAdvance} + ${newAdvanceInput} = ${newCumulativeAdvance}`);
+            console.log(`Labour ${labourId}: Recovery ${oldCumulativeRecovery} + ${newRecoveryInput} = ${newCumulativeRecovery}`);
+
             const updateData = {
                 labourId,
                 weekStart: weekDate,
@@ -87,10 +102,14 @@ router.post('/', async (req, res) => {
                     sat: parseFloat(data.sat) || 0,
                     sun: parseFloat(data.sun) || 0
                 },
-                newAdvance: parseFloat(data.newAdvance) || 0,
-                recoveredAmount: parseFloat(data.recoveredAmount) || 0,
-                // Legacy support just in case, or for simple gross calc
-                advanceAmount: parseFloat(data.recoveredAmount) || 0
+                // Reset input fields to 0 after adding to cumulative
+                newAdvance: 0,
+                recoveredAmount: 0,
+                // Update cumulative values (accumulate!)
+                cumulativeAdvance: newCumulativeAdvance,
+                cumulativeRecovery: newCumulativeRecovery,
+                // Legacy support
+                advanceAmount: newCumulativeRecovery
             };
 
             await Attendance.findOneAndUpdate(
@@ -98,6 +117,8 @@ router.post('/', async (req, res) => {
                 updateData,
                 { upsert: true, new: true }
             );
+
+            // NOTE: Balance is NOT updated here - only updated when PAY is clicked
         }
         res.redirect(`/attendance?date=${dateStr}`);
     } catch (err) {
@@ -116,6 +137,14 @@ router.post('/save-and-pay', async (req, res) => {
         const weekDate = new Date(weekStart);
         weekDate.setHours(12, 0, 0, 0);
 
+        // Get existing attendance to track cumulative values
+        const existing = await Attendance.findOne({ labourId, weekStart: weekDate });
+        const cumulativeAdvance = existing ? (existing.cumulativeAdvance || 0) : 0;
+        const cumulativeRecovery = existing ? (existing.cumulativeRecovery || 0) : 0;
+
+        const newAdvanceValue = parseFloat(newAdvance) || 0;
+        const newRecoveryValue = parseFloat(recoveredAmount) || 0;
+
         // 1. Force Save/Update Attendance First
         const updateData = {
             labourId,
@@ -129,8 +158,12 @@ router.post('/save-and-pay', async (req, res) => {
                 sat: parseFloat(days.sat) || 0,
                 sun: parseFloat(days.sun) || 0
             },
-            newAdvance: parseFloat(newAdvance) || 0,
-            recoveredAmount: parseFloat(recoveredAmount) || 0,
+            // Reset inputs to 0
+            newAdvance: 0,
+            recoveredAmount: 0,
+            // Add to cumulative
+            cumulativeAdvance: cumulativeAdvance + newAdvanceValue,
+            cumulativeRecovery: cumulativeRecovery + newRecoveryValue,
             isPaid: true // Mark as Paid immediately
         };
 
@@ -140,32 +173,36 @@ router.post('/save-and-pay', async (req, res) => {
             { upsert: true, new: true }
         ).populate('labourId');
 
+        // Update Labour Balance immediately (add advance, subtract recovery)
+        const balanceChange = newAdvanceValue - newRecoveryValue;
+        if (balanceChange !== 0) {
+            await Labour.findByIdAndUpdate(labourId, {
+                $inc: { advanceBalance: balanceChange }
+            });
+        }
+
         // 2. Process Payment Record
         const totalDays = Object.values(att.days).reduce((a, b) => a + b, 0);
         const gross = totalDays * att.labourId.dailyRate;
-        const newAdv = att.newAdvance || 0;
-        const recovered = att.recoveredAmount || 0;
-        const net = gross - recovered;
+        const totalAdvance = att.cumulativeAdvance || 0;
+        const totalRecovered = att.cumulativeRecovery || 0;
+        const net = gross - totalRecovered;
 
         // Check if payment already exists
         const existingPay = await Payment.findOne({ labourId, weekStart: weekDate });
         if (!existingPay) {
-            // Update Labour Balance
+            // Get updated labour balance
             const labour = await Labour.findById(labourId);
-            const oldBalance = labour.advanceBalance || 0;
-            const newBalance = oldBalance + newAdv - recovered;
-
-            labour.advanceBalance = newBalance;
-            await labour.save();
+            const currentBalance = labour.advanceBalance || 0;
 
             await Payment.create({
                 labourId: labourId,
                 weekStart: weekDate,
                 grossAmount: gross,
-                advance: recovered,
-                newAdvance: newAdv,
+                advance: totalRecovered,
+                newAdvance: totalAdvance,
                 netPaid: net,
-                balanceAfter: newBalance
+                balanceAfter: currentBalance
             });
         }
 
@@ -178,14 +215,17 @@ router.post('/save-and-pay', async (req, res) => {
     }
 });
 
+
 // Simple Pay - Uses existing saved data from DB
 router.post('/simple-pay', async (req, res) => {
     console.log('=== SIMPLE-PAY ROUTE HIT ===');
     console.log('Request body:', req.body);
     try {
-        const { weekStart, labourId } = req.body;
+        const { weekStart, labourId, newAdvance, recoveredAmount } = req.body;
         console.log('weekStart:', weekStart);
         console.log('labourId:', labourId);
+        console.log('newAdvance:', newAdvance);
+        console.log('recoveredAmount:', recoveredAmount);
 
         // Robust date parsing for 'YYYY-MM-DD' format
         let dateStr = weekStart;
@@ -200,7 +240,11 @@ router.post('/simple-pay', async (req, res) => {
             return res.redirect('/attendance');
         }
 
-        // Find the attendance record (must exist and be saved already)
+        // Parse the values from form (what user entered NOW)
+        const newAdvanceValue = parseFloat(newAdvance) || 0;
+        const recoveryValue = parseFloat(recoveredAmount) || 0;
+
+        // Find the attendance record
         let att = await Attendance.findOne({ labourId, weekStart: weekDate }).populate('labourId');
 
         if (!att) {
@@ -211,6 +255,8 @@ router.post('/simple-pay', async (req, res) => {
                 days: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
                 newAdvance: 0,
                 recoveredAmount: 0,
+                cumulativeAdvance: 0,
+                cumulativeRecovery: 0,
                 isPaid: false
             });
             await att.save();
@@ -219,42 +265,59 @@ router.post('/simple-pay', async (req, res) => {
 
         if (att.isPaid) {
             // Already paid, just redirect
-            const dateStr = weekStart.split('T')[0];
             return res.redirect(`/attendance?date=${dateStr}`);
         }
+
+        // Get current labour for balance
+        const labour = await Labour.findById(labourId);
+        const oldBalance = labour.advanceBalance || 0;
+
+        // Calculate new balance: Old Balance + New Advance - Recovery
+        const newBalance = oldBalance + newAdvanceValue - recoveryValue;
+        console.log('Old Balance:', oldBalance);
+        console.log('New Advance:', newAdvanceValue);
+        console.log('Recovery:', recoveryValue);
+        console.log('New Balance:', newBalance);
+
+        // Update Labour's advanceBalance
+        labour.advanceBalance = newBalance;
+        await labour.save();
 
         // Calculate payment
         const totalDays = Object.values(att.days).reduce((a, b) => a + b, 0);
         const gross = totalDays * att.labourId.dailyRate;
-        const newAdv = att.newAdvance || 0;
-        const recovered = att.recoveredAmount || 0;
-        const net = gross - recovered;
 
-        // Check for existing payment
+        // Net Pay = Gross - Recovery (exact amount being paid)
+        // Also subtract any previously saved recovery for this week
+        const previousRecovery = att.cumulativeRecovery || 0;
+        const totalRecovery = previousRecovery + recoveryValue;
+        const net = gross - totalRecovery;
+
+        console.log('Gross:', gross);
+        console.log('Total Recovery:', totalRecovery);
+        console.log('Net Pay:', net);
+
+        // Update attendance record
+        att.cumulativeAdvance = (att.cumulativeAdvance || 0) + newAdvanceValue;
+        att.cumulativeRecovery = totalRecovery;
+        att.newAdvance = 0;
+        att.recoveredAmount = 0;
+        att.isPaid = true;
+        await att.save();
+
+        // Create payment record
         const existingPay = await Payment.findOne({ labourId, weekStart: weekDate });
         if (!existingPay) {
-            // Update Labour Balance
-            const labour = await Labour.findById(labourId);
-            const oldBalance = labour.advanceBalance || 0;
-            const newBalance = oldBalance + newAdv - recovered;
-
-            labour.advanceBalance = newBalance;
-            await labour.save();
-
             await Payment.create({
                 labourId,
                 weekStart: weekDate,
                 grossAmount: gross,
-                advance: recovered,
-                newAdvance: newAdv,
+                advance: totalRecovery,
+                newAdvance: (att.cumulativeAdvance || 0),
                 netPaid: net,
                 balanceAfter: newBalance
             });
         }
-
-        // Mark as paid
-        att.isPaid = true;
-        await att.save();
 
         res.redirect(`/attendance?date=${dateStr}`);
 

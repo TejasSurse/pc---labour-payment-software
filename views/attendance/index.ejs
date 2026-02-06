@@ -70,18 +70,30 @@
                                 <tbody>
                                     <% labours.forEach(labour=> {
                                         const att = attendanceMap[labour._id.toString()] || { days: {}, newAdvance: 0,
-                                        recoveredAmount: 0, isPaid: false };
+                                        recoveredAmount: 0, cumulativeAdvance: 0, cumulativeRecovery: 0, isPaid: false
+                                        };
                                         const isLocked = att.isPaid;
                                         const options = [0, 0.5, 1, 1.5, 2];
                                         const currentBalance = labour.advanceBalance || 0;
+
+                                        // Get cumulative values (already processed on previous saves)
+                                        const cumAdvance = att.cumulativeAdvance || 0;
+                                        const cumRecovery = att.cumulativeRecovery || 0;
+
+                                        // Get current input values (what's in input fields now)
+                                        const inputAdvance = att.newAdvance || 0;
+                                        const inputRecovery = att.recoveredAmount || 0;
 
                                         // Calculate display values
                                         const totalDays = Object.values(att.days || {}).reduce((a,b) => a +
                                         (parseFloat(b) || 0), 0);
                                         const gross = totalDays * labour.dailyRate;
-                                        const net = gross - (att.recoveredAmount || 0);
+
+                                        // Net Pay = Gross - (cumulative + current input recovery)
+                                        const totalRecovery = cumRecovery + inputRecovery;
+                                        const net = gross - totalRecovery;
                                         %>
-                                        <tr data-rate="<%= labour.dailyRate %>"
+                                        <tr data-rate="<%= labour.dailyRate %>" data-cum-recovery="<%= cumRecovery %>"
                                             class="<%= isLocked ? 'table-success' : '' %>">
                                             <td class="text-start ps-3 fw-bold"
                                                 style="position: sticky; left: 0; background: inherit; z-index: 1010;">
@@ -116,27 +128,38 @@
                                                     <td class="gross-amt text-secondary">₹<%= gross %>
                                                     </td>
 
-                                                    <!-- Advance Columns -->
+                                                    <!-- Opening Balance -->
                                                     <td class="fw-bold text-dark bg-warning bg-opacity-10">₹<%=
                                                             currentBalance %>
                                                     </td>
 
+                                                    <!-- New Advance Input -->
                                                     <td class="p-1" style="background: rgba(108, 117, 125, 0.1);">
                                                         <input type="number"
                                                             name="attendance[<%= labour._id %>][newAdvance]"
                                                             class="form-control form-control-sm text-center new-adv"
-                                                            value="<%= att.newAdvance || 0 %>" placeholder="0" min="0"
+                                                            value="<%= inputAdvance %>" placeholder="0" min="0"
                                                             <%=isLocked ? 'disabled' : '' %>>
+                                                        <% if(cumAdvance> 0) { %>
+                                                            <small class="text-muted d-block text-center">+₹<%=
+                                                                    cumAdvance %></small>
+                                                            <% } %>
                                                     </td>
 
+                                                    <!-- Recovery Input -->
                                                     <td class="p-1" style="background: rgba(220, 53, 69, 0.1);">
                                                         <input type="number"
                                                             name="attendance[<%= labour._id %>][recoveredAmount]"
                                                             class="form-control form-control-sm text-center rec-amt"
-                                                            value="<%= att.recoveredAmount || 0 %>" placeholder="0"
-                                                            min="0" <%=isLocked ? 'disabled' : '' %>>
+                                                            value="<%= inputRecovery %>" placeholder="0" min="0"
+                                                            <%=isLocked ? 'disabled' : '' %>>
+                                                        <% if(cumRecovery> 0) { %>
+                                                            <small class="text-danger d-block text-center">-₹<%=
+                                                                    cumRecovery %></small>
+                                                            <% } %>
                                                     </td>
 
+                                                    <!-- Net Pay -->
                                                     <td class="fw-bold text-success net-amt fs-6">₹<%= net %>
                                                     </td>
                                                     <td>
@@ -176,6 +199,8 @@
             <form id="payForm" action="/attendance/simple-pay" method="POST" style="display: none;">
                 <input type="hidden" name="weekStart" id="payWeekStart">
                 <input type="hidden" name="labourId" id="payLabourId">
+                <input type="hidden" name="newAdvance" id="payNewAdvance">
+                <input type="hidden" name="recoveredAmount" id="payRecoveredAmount">
             </form>
         </div>
 
@@ -185,13 +210,16 @@
                 function updateRow(row) {
                     if (!row.dataset.rate) return;
                     const rate = parseFloat(row.dataset.rate);
+                    const cumRecovery = parseFloat(row.dataset.cumRecovery) || 0;
 
                     let totalDays = 0;
                     row.querySelectorAll('.day-input').forEach(sel => totalDays += parseFloat(sel.value) || 0);
 
-                    const recAmt = parseFloat(row.querySelector('.rec-amt')?.value) || 0;
+                    // New recovery input (what user is adding now)
+                    const newRecAmt = parseFloat(row.querySelector('.rec-amt')?.value) || 0;
                     const gross = totalDays * rate;
-                    const net = gross - recAmt;
+                    // Total recovery = cumulative + new input
+                    const net = gross - cumRecovery - newRecAmt;
 
                     const totalCell = row.querySelector('.total-days');
                     const grossCell = row.querySelector('.gross-amt');
@@ -233,20 +261,33 @@
                         console.log('Labour ID:', labourId);
                         console.log('Week:', week);
 
+                        // Get the row to read current input values
+                        const row = this.closest('tr');
+                        const newAdvanceInput = row.querySelector('.new-adv');
+                        const recoveredAmountInput = row.querySelector('.rec-amt');
+
+                        const newAdvance = newAdvanceInput ? newAdvanceInput.value : '0';
+                        const recoveredAmount = recoveredAmountInput ? recoveredAmountInput.value : '0';
+
+                        console.log('New Advance:', newAdvance);
+                        console.log('Recovered Amount:', recoveredAmount);
+
                         if (confirm('Mark as PAID? Click OK to proceed.')) {
                             console.log('User confirmed. Submitting form...');
 
                             const form = document.getElementById('payForm');
                             const weekInput = document.getElementById('payWeekStart');
                             const labourInput = document.getElementById('payLabourId');
+                            const advanceInput = document.getElementById('payNewAdvance');
+                            const recAmtInput = document.getElementById('payRecoveredAmount');
 
                             console.log('Form element:', form);
-                            console.log('Week input:', weekInput);
-                            console.log('Labour input:', labourInput);
 
-                            if (form && weekInput && labourInput) {
+                            if (form && weekInput && labourInput && advanceInput && recAmtInput) {
                                 weekInput.value = week;
                                 labourInput.value = labourId;
+                                advanceInput.value = newAdvance;
+                                recAmtInput.value = recoveredAmount;
                                 console.log('Form values set. Submitting...');
                                 form.submit();
                             } else {

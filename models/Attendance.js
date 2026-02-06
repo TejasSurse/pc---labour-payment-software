@@ -14,8 +14,11 @@ const AttendanceSchema = new mongoose.Schema({
     },
     advanceAmount: { type: Number, default: 0 }, // Kept for backward compat (treated as "Recovered" now? or "Net Change"?)
     // Let's be explicit
-    newAdvance: { type: Number, default: 0 }, // Given this week
-    recoveredAmount: { type: Number, default: 0 }, // Deducted from salary
+    newAdvance: { type: Number, default: 0 }, // Input field value (resets to 0 after save)
+    recoveredAmount: { type: Number, default: 0 }, // Input field value (resets to 0 after save)
+    // Cumulative tracking for the week
+    cumulativeAdvance: { type: Number, default: 0 }, // Total advances given this week
+    cumulativeRecovery: { type: Number, default: 0 }, // Total recovered this week
     isPaid: { type: Boolean, default: false }
 });
 
